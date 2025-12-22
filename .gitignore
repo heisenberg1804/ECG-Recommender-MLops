@@ -1,0 +1,63 @@
+# ============================================================
+# FILE: .gitignore
+# ============================================================
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env
+
+# Data (large files)
+data/
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Models
+models/
+*.pt
+*.pth
+*.onnx
+
+# MLflow
+mlruns/
+
+# Kubernetes secrets (never commit!)
+k8s/**/secrets.yaml
+!k8s/**/secrets.yaml.template
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
