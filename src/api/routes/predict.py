@@ -1,16 +1,16 @@
 # ============================================================
 # FILE: src/api/routes/predict.py
 # ============================================================
+import numpy as np
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-import numpy as np
 
 router = APIRouter()
 
 
 class ECGInput(BaseModel):
     """Input schema for ECG prediction."""
-    
+
     ecg_signal: list[list[float]] = Field(
         ...,
         description="12-lead ECG signal, shape (12, num_samples)",
@@ -24,7 +24,7 @@ class ECGInput(BaseModel):
 
 class ClinicalAction(BaseModel):
     """A recommended clinical action."""
-    
+
     action: str
     confidence: float = Field(ge=0.0, le=1.0)
     urgency: str = Field(pattern="^(immediate|urgent|routine)$")
@@ -33,7 +33,7 @@ class ClinicalAction(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Response schema for ECG prediction."""
-    
+
     ecg_id: str
     recommendations: list[ClinicalAction]
     model_version: str
@@ -44,20 +44,20 @@ class PredictionResponse(BaseModel):
 async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
     """
     Predict clinical actions based on ECG signal.
-    
+
     This endpoint accepts a 12-lead ECG signal and returns
     recommended clinical actions ranked by confidence.
     """
     import time
     import uuid
-    
+
     start_time = time.time()
-    
+
     # Validate signal shape
     signal = np.array(ecg_input.ecg_signal)
     if signal.shape[0] != 12:
         raise HTTPException(status_code=400, detail="ECG must have exactly 12 leads")
-    
+
     # TODO: Replace with actual model inference
     # For now, return dummy predictions
     recommendations = [
@@ -80,9 +80,9 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
             reasoning="Abnormal findings warrant specialist review",
         ),
     ]
-    
+
     processing_time = (time.time() - start_time) * 1000
-    
+
     return PredictionResponse(
         ecg_id=str(uuid.uuid4()),
         recommendations=recommendations,
