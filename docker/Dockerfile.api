@@ -1,6 +1,3 @@
-# ============================================================
-# FILE: docker/Dockerfile.api
-# ============================================================
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -13,7 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:$PATH"
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
@@ -23,6 +22,7 @@ RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY src/ ./src/
+COPY conftest.py ./
 
 # Expose port
 EXPOSE 8000
