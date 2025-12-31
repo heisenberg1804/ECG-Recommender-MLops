@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -35,6 +38,7 @@ jobs:
           context: .
           file: docker/Dockerfile.api
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest
@@ -49,8 +53,9 @@ jobs:
 
       - name: Deploy notification
         run: |
-          echo "🚀 Deploying image ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "🚀 Deployed image: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo ""
           echo "To deploy to your local minikube, run:"
-          echo "  docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          echo "  minikube image load ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          echo "  kubectl set image deployment/ecg-api api=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n ecg-staging"
+          echo "  docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest"
+          echo "  minikube image load ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest"
+          echo "  kubectl set image deployment/ecg-api api=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest -n ecg-staging"
