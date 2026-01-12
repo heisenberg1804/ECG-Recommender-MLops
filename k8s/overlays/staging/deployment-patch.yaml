@@ -8,6 +8,7 @@ spec:
     spec:
       containers:
       - name: api
+        image: ecg-api:v0.1.0  # Pin version
         env:
         - name: ENVIRONMENT
           value: "staging"

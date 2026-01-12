@@ -24,6 +24,13 @@ RUN uv sync --frozen --no-dev
 COPY src/ ./src/
 COPY conftest.py ./
 
+# Copy trained model and action mapping
+COPY models/best_model.pth ./models/best_model.pth
+COPY src/ml/inference/action_mapping.json ./src/ml/inference/action_mapping.json
+
+# Create directory for MLflow logs (optional)
+RUN mkdir -p ./mlruns
+
 # Expose port
 EXPOSE 8000
 

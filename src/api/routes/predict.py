@@ -1,9 +1,14 @@
 # ============================================================
-# FILE: src/api/routes/predict.py
+# FILE: src/api/routes/predict.py (UPDATED)
 # ============================================================
+import time
+import uuid
+
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from src.ml.inference.predictor import get_predictor
 
 router = APIRouter()
 
@@ -31,10 +36,18 @@ class ClinicalAction(BaseModel):
     reasoning: str
 
 
+class Diagnosis(BaseModel):
+    """A predicted diagnosis."""
+
+    diagnosis: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class PredictionResponse(BaseModel):
     """Response schema for ECG prediction."""
 
     ecg_id: str
+    diagnoses: list[Diagnosis]
     recommendations: list[ClinicalAction]
     model_version: str
     processing_time_ms: float
@@ -47,45 +60,79 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
 
     This endpoint accepts a 12-lead ECG signal and returns
     recommended clinical actions ranked by confidence.
-    """
-    import time
-    import uuid
 
+    The model classifies the ECG into diagnostic categories:
+    - NORM: Normal ECG
+    - MI: Myocardial Infarction
+    - STTC: ST/T Changes
+    - CD: Conduction Disturbance
+    - HYP: Hypertrophy
+
+    Then maps diagnoses to evidence-based clinical actions.
+    """
     start_time = time.time()
 
     # Validate signal shape
-    signal = np.array(ecg_input.ecg_signal)
+    signal = np.array(ecg_input.ecg_signal, dtype=np.float32)
     if signal.shape[0] != 12:
-        raise HTTPException(status_code=400, detail="ECG must have exactly 12 leads")
+        raise HTTPException(
+            status_code=400,
+            detail=f"ECG must have exactly 12 leads, got {signal.shape[0]}"
+        )
 
-    # TODO: Replace with actual model inference
-    # For now, return dummy predictions
-    recommendations = [
-        ClinicalAction(
-            action="Order troponin levels",
-            confidence=0.85,
-            urgency="urgent",
-            reasoning="ST segment changes detected in leads V1-V4",
-        ),
-        ClinicalAction(
-            action="12-lead ECG in 6 hours",
-            confidence=0.72,
-            urgency="routine",
-            reasoning="Monitor for dynamic changes",
-        ),
-        ClinicalAction(
-            action="Cardiology consult",
-            confidence=0.65,
-            urgency="routine",
-            reasoning="Abnormal findings warrant specialist review",
-        ),
-    ]
+    try:
+        # Get predictor (lazy loads model on first call)
+        predictor = get_predictor()
+
+        # Run inference
+        result = predictor.predict(signal, threshold=0.3, top_k=5)
+
+        # Convert to response format
+        diagnoses = [
+            Diagnosis(diagnosis=d['diagnosis'], confidence=d['confidence'])
+            for d in result['diagnoses']
+        ]
+
+        recommendations = [
+            ClinicalAction(
+                action=r['action'],
+                confidence=r['confidence'],
+                urgency=r['urgency'],
+                reasoning=r['reasoning'],
+            )
+            for r in result['recommendations']
+        ]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction failed: {str(e)}"
+        )
 
     processing_time = (time.time() - start_time) * 1000
 
     return PredictionResponse(
         ecg_id=str(uuid.uuid4()),
+        diagnoses=diagnoses,
         recommendations=recommendations,
-        model_version="0.1.0-dummy",
+        model_version="resnet18-v0.1.0",
         processing_time_ms=round(processing_time, 2),
     )
+
+
+@router.get("/model/info")
+async def get_model_info():
+    """Get information about the loaded model."""
+    try:
+        predictor = get_predictor()
+        return {
+            "model_type": "ResNet-18 1D",
+            "classes": predictor.superclasses,
+            "device": str(predictor.device),
+            "model_path": str(predictor.model_path),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load model info: {str(e)}"
+        )

@@ -24,6 +24,8 @@ dependencies = [
     "mlflow>=2.9.0",
     "python-multipart>=0.0.6",
     "httpx>=0.26.0",
+    "tqdm>=4.66.0",
+    "scipy>=1.11.0",
 ]
 
 [project.optional-dependencies]

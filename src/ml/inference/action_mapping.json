@@ -1,0 +1,67 @@
+{
+  "MI": [
+    {
+      "action": "Activate cath lab",
+      "urgency": "immediate",
+      "reasoning": "Myocardial infarction detected - requires immediate intervention"
+    },
+    {
+      "action": "Administer aspirin 325mg",
+      "urgency": "immediate",
+      "reasoning": "Antiplatelet therapy for acute MI"
+    },
+    {
+      "action": "Order troponin stat",
+      "urgency": "immediate",
+      "reasoning": "Confirm cardiac injury with biomarkers"
+    }
+  ],
+  "STTC": [
+    {
+      "action": "Order troponin levels",
+      "urgency": "urgent",
+      "reasoning": "ST/T changes may indicate ischemia"
+    },
+    {
+      "action": "12-lead ECG in 6 hours",
+      "urgency": "routine",
+      "reasoning": "Monitor for dynamic changes"
+    },
+    {
+      "action": "Cardiology consult",
+      "urgency": "urgent",
+      "reasoning": "Specialist review of ST/T abnormalities"
+    }
+  ],
+  "CD": [
+    {
+      "action": "Review medications",
+      "urgency": "routine",
+      "reasoning": "Conduction disturbance - check for QT-prolonging drugs"
+    },
+    {
+      "action": "Consider 24-hour Holter monitor",
+      "urgency": "routine",
+      "reasoning": "Assess for intermittent conduction blocks"
+    }
+  ],
+  "HYP": [
+    {
+      "action": "Order echocardiogram",
+      "urgency": "routine",
+      "reasoning": "Hypertrophy detected - assess cardiac function"
+    },
+    {
+      "action": "Blood pressure monitoring",
+      "urgency": "routine",
+      "reasoning": "Evaluate for hypertension as underlying cause"
+    }
+  ],
+  "NORM": [
+    {
+      "action": "Normal ECG - discharge with instructions",
+      "urgency": "routine",
+      "reasoning": "No acute abnormalities detected"
+    }
+  ]
+}

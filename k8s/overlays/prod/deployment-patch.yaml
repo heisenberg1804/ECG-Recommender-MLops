@@ -8,6 +8,8 @@ spec:
     spec:
       containers:
       - name: api
+        image: ecg-api:v0.1.0  # Pin version
+        imagePullPolicy: IfNotPresent  # Pull from registry in prod
         env:
         - name: ENVIRONMENT
           value: "production"

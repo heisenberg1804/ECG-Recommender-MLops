@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ecg-api
+  labels:
+    app: ecg-api
+    version: v0.1.0
 spec:
   replicas: 2
   selector:
@@ -11,32 +14,43 @@ spec:
     metadata:
       labels:
         app: ecg-api
+        version: v0.1.0
     spec:
       containers:
       - name: api
-        image: ecg-api:latest
-        imagePullPolicy: Never
+        image: ecg-api:v0.1.0
+        imagePullPolicy: Never  # Use local image in minikube
         ports:
         - containerPort: 8000
+          name: http
         env:
         - name: ENVIRONMENT
           value: "development"
+        - name: LOG_LEVEL
+          value: "INFO"
+        envFrom:
+        - configMapRef:
+            name: ecg-api-config
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
+            memory: "512Mi"      # Increased for model
             cpu: "500m"
+          limits:
+            memory: "2Gi"        # Increased for model
+            cpu: "2000m"
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30   # Increased for model loading
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /ready
             port: 8000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20   # Increased for model loading
           periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

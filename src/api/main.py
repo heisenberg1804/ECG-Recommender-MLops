@@ -1,10 +1,11 @@
 # ============================================================
-# FILE: src/api/main.py
+# FILE: src/api/main.py (UPDATED WITH PROMETHEUS)
 # ============================================================
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.routes import health, predict
 
@@ -13,7 +14,6 @@ from src.api.routes import health, predict
 async def lifespan(app: FastAPI):
     # Startup: Load model, connect to DB, etc.
     print("Starting up...")
-    # TODO: Load ML model here
     yield
     # Shutdown: Clean up resources
     print("Shutting down...")
@@ -35,6 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Prometheus metrics instrumentation
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 # Include routers
 app.include_router(health.router, tags=["Health"])
-app.include_router(predict.router, prefix="/api/v1", tags=["Predictions"])
+app.include_router(predict.router, tags=["Predictions"])
