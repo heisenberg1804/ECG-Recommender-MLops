@@ -32,7 +32,7 @@ class TestPredictEndpoint:
         ecg_signal = [[0.1] * 5000 for _ in range(12)]  # 12 leads, 5000 samples
 
         response = client.post(
-            "/api/v1/predict",
+            "/predict",
             json={
                 "ecg_signal": ecg_signal,
                 "patient_age": 65,
@@ -52,7 +52,7 @@ class TestPredictEndpoint:
         ecg_signal = [[0.1] * 5000 for _ in range(10)]  # Only 10 leads
 
         response = client.post(
-            "/api/v1/predict",
+            "/predict",
             json={"ecg_signal": ecg_signal},
         )
 
@@ -63,7 +63,7 @@ class TestPredictEndpoint:
         ecg_signal = [[0.1] * 5000 for _ in range(12)]
 
         response = client.post(
-            "/api/v1/predict",
+            "/predict",
             json={"ecg_signal": ecg_signal},
         )
 
