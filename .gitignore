@@ -42,7 +42,7 @@ data/
 *.npz
 
 # Models
-models/
+# models/
 *.pt
 *.pth
 *.onnx
@@ -61,3 +61,4 @@ Thumbs.db
 # Logs
 *.log
 logs/mlflow.db
+mlflow.db
