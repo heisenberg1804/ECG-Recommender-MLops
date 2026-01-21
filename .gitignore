@@ -60,4 +60,4 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+logs/mlflow.db

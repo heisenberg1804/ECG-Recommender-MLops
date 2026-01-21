@@ -1,61 +1,36 @@
-name: CD Staging
+name: Deploy to Staging
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
-env:
-  IMAGE_NAME: ecg-api
-
-  # Add permissions for GHCR
-permissions:
-  contents: read
-  packages: write
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ github.sha }}
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Pull LFS files (model)
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
+      
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile.api
-          push: true
+          file: ./docker/Dockerfile.api
           platforms: linux/amd64,linux/arm64
+          push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy-staging:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy notification
-        run: |
-          echo "🚀 Deployed image: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          echo ""
-          echo "To deploy to your local minikube, run:"
-          echo "  docker pull ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest"
-          echo "  minikube image load ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest"
-          echo "  kubectl set image deployment/ecg-api api=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:staging-latest -n ecg-staging"
+            ghcr.io/${{ github.repository_owner }}/ecg-recommender:latest
+            ghcr.io/${{ github.repository_owner }}/ecg-recommender:${{ github.sha }}

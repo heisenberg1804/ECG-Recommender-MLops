@@ -4,7 +4,7 @@ metadata:
   name: ecg-api
   labels:
     app: ecg-api
-    version: v0.1.0
+    version: v0.1.2  # Updated this too!
 spec:
   replicas: 2
   selector:
@@ -14,12 +14,12 @@ spec:
     metadata:
       labels:
         app: ecg-api
-        version: v0.1.0
+        version: v0.1.2  # Updated this too!
     spec:
       containers:
       - name: api
-        image: ecg-api:v0.1.1  # Changed from v0.1.0
-        imagePullPolicy: Never  # Use local image in minikube
+        image: ecg-api:v0.1.2
+        imagePullPolicy: Never
         ports:
         - containerPort: 8000
           name: http
@@ -28,21 +28,44 @@ spec:
           value: "development"
         - name: LOG_LEVEL
           value: "INFO"
+        - name: MLFLOW_MODEL_NAME
+          value: "ecg-clinical-recommender"  # Add this!
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow.ecg-dev.svc.cluster.local:5000"  # Add this!
+        - name: POSTGRES_HOST
+          value: "postgres"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
         envFrom:
         - configMapRef:
             name: ecg-api-config
         resources:
           requests:
-            memory: "512Mi"      # Increased for model
+            memory: "512Mi"
             cpu: "500m"
           limits:
-            memory: "2Gi"        # Increased for model
+            memory: "2Gi"
             cpu: "2000m"
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 30   # Increased for model loading
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
@@ -50,7 +73,7 @@ spec:
           httpGet:
             path: /ready
             port: 8000
-          initialDelaySeconds: 20   # Increased for model loading
+          initialDelaySeconds: 20
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3

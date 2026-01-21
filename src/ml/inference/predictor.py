@@ -1,16 +1,17 @@
 # ============================================================
-# FILE: src/ml/inference/predictor.py
+# FILE: src/ml/inference/predictor.py (WITH MLFLOW SUPPORT)
 # ============================================================
 """
 Model inference logic for clinical action recommendation.
 
 Handles:
-- Model loading
+- Model loading (from file or MLflow Registry)
 - Preprocessing
 - Inference
 - Action mapping
 """
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -26,20 +27,32 @@ class ClinicalActionPredictor:
 
     def __init__(
         self,
-        model_path: Path | str,
-        action_mapping_path: Path | str,
+        model_path: Path | str | None = None,
+        model_name: str | None = None,
+        model_stage: str = "Production",
+        action_mapping_path: Path | str | None = None,
         device: str | None = None,
+        mlflow_tracking_uri: str | None = None,
     ):
         """
         Initialize predictor.
 
         Args:
-            model_path: Path to trained PyTorch model (.pth file)
+            model_path: Path to trained PyTorch model (.pth file).
+                       If None, loads from MLflow Model Registry.
+            model_name: MLflow model registry name (used if model_path is None)
+            model_stage: MLflow model stage (Production, Staging, etc.)
             action_mapping_path: Path to action mapping JSON
             device: Device to run inference on. Auto-detect if None.
+            mlflow_tracking_uri: MLflow tracking URI. Uses env var if None.
         """
-        self.model_path = Path(model_path)
-        self.action_mapping_path = Path(action_mapping_path)
+        self.model_path = Path(model_path) if model_path else None
+        self.model_name = model_name
+        self.model_stage = model_stage
+        self.mlflow_tracking_uri = mlflow_tracking_uri or os.getenv(
+            "MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"
+        )
+        self.action_mapping_path = Path(action_mapping_path) if action_mapping_path else None
 
         # Auto-detect device
         if device is None:
@@ -60,20 +73,55 @@ class ClinicalActionPredictor:
         self.action_mapping = self._load_action_mapping()
 
     def _load_model(self) -> nn.Module:
-        """Load trained model."""
+        """Load trained model from file or MLflow Registry."""
         model = resnet18_1d(num_classes=len(self.superclasses), include_patient_context=False)
 
-        # Load weights
-        state_dict = torch.load(self.model_path, map_location=self.device)
-        model.load_state_dict(state_dict)
+        # Load from MLflow Model Registry if model_name provided
+        if self.model_path is None and self.model_name:
+            print(f"📦 Loading model from MLflow Registry: {self.model_name}/{self.model_stage}")
+            try:
+                import mlflow
+                import mlflow.pytorch
 
-        model = model.to(self.device)
-        model.eval()
+                mlflow.set_tracking_uri(self.mlflow_tracking_uri)
 
-        return model
+                # Load model from registry
+                model_uri = f"models:/{self.model_name}/{self.model_stage}"
+                loaded_model = mlflow.pytorch.load_model(model_uri, map_location=self.device)
+
+                # MLflow returns the full model, we just need to move to device
+                loaded_model = loaded_model.to(self.device)
+                loaded_model.eval()
+
+                print("✅ Model loaded from MLflow Registry")
+                return loaded_model
+
+            except Exception as e:
+                print(f"⚠️  Failed to load from MLflow: {e}")
+                print("   Falling back to file-based loading...")
+                # Fall through to file-based loading
+
+        # Load from file path
+        if self.model_path and self.model_path.exists():
+            print(f"📦 Loading model from file: {self.model_path}")
+            state_dict = torch.load(self.model_path, map_location=self.device)
+            model.load_state_dict(state_dict)
+            model = model.to(self.device)
+            model.eval()
+            print("✅ Model loaded from file")
+            return model
+
+        raise FileNotFoundError(
+            f"No model found. Tried: "
+            f"MLflow Registry ({self.model_name}), "
+            f"File path ({self.model_path})"
+        )
 
     def _load_action_mapping(self) -> dict[str, list[dict[str, str]]]:
         """Load diagnostic → action mapping."""
+        if self.action_mapping_path is None:
+            self.action_mapping_path = Path(__file__).parent / "action_mapping.json"
+
         with open(self.action_mapping_path) as f:
             return json.load(f)
 
@@ -196,24 +244,40 @@ _predictor_instance = None
 
 def get_predictor(
     model_path: Path | str | None = None,
+    model_name: str | None = None,
     action_mapping_path: Path | str | None = None,
 ) -> ClinicalActionPredictor:
     """
     Get singleton predictor instance.
 
     Lazy loads model on first call. Subsequent calls return cached instance.
+
+    Args:
+        model_path: Path to model file (for local/file-based loading)
+        model_name: MLflow model name (for registry-based loading)
+        action_mapping_path: Path to action mapping
+
+    Priority:
+        1. If model_name provided → load from MLflow Registry
+        2. If model_path provided → load from file
+        3. Default → try file at models/best_model.pth
     """
     global _predictor_instance
 
     if _predictor_instance is None:
-        # Default paths
-        if model_path is None:
+        # Check for MLflow model name in environment
+        mlflow_model_name = model_name or os.getenv("MLFLOW_MODEL_NAME")
+
+        # Default paths for file-based loading
+        if model_path is None and mlflow_model_name is None:
             model_path = Path(__file__).parents[3] / "models" / "best_model.pth"
+
         if action_mapping_path is None:
             action_mapping_path = Path(__file__).parent / "action_mapping.json"
 
         _predictor_instance = ClinicalActionPredictor(
             model_path=model_path,
+            model_name=mlflow_model_name,
             action_mapping_path=action_mapping_path,
         )
 

@@ -24,18 +24,15 @@ RUN uv sync --frozen --no-dev
 COPY src/ ./src/
 COPY conftest.py ./
 
-# Copy trained model and action mapping
+# Copy model and action mapping
 COPY models/best_model.pth ./models/best_model.pth
 COPY src/ml/inference/action_mapping.json ./src/ml/inference/action_mapping.json
-
-# Create directory for MLflow logs (optional)
-RUN mkdir -p ./mlruns
 
 # Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the application

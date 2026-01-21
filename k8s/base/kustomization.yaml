@@ -7,6 +7,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - servicemonitor.yaml
+  - postgres.yaml  # Add this
+  - mlflow.yaml
 
 namespace: ecg-dev
 

@@ -1,9 +1,12 @@
 # ============================================================
-# FILE: src/api/routes/predict.py (UPDATED WITH METRICS)
+# FILE: src/api/routes/predict.py (COMPLETE WITH LOGGING)
 # ============================================================
+import json
+import os
 import time
 import uuid
 
+import asyncpg
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from prometheus_client import Counter, Gauge, Histogram
@@ -37,6 +40,25 @@ MODEL_LOADED = Gauge(
     'ecg_model_loaded',
     'Whether the model is loaded (1) or not (0)'
 )
+
+# Database connection pool
+DB_POOL = None
+
+
+async def get_db_pool():
+    """Get database connection pool (lazy initialization)."""
+    global DB_POOL
+    if DB_POOL is None:
+        DB_POOL = await asyncpg.create_pool(
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=int(os.getenv("POSTGRES_PORT", "5432")),
+            user=os.getenv("POSTGRES_USER", "ecg_user"),
+            password=os.getenv("POSTGRES_PASSWORD", "ecg_password_dev"),
+            database=os.getenv("POSTGRES_DB", "ecg_predictions"),
+            min_size=2,
+            max_size=10,
+        )
+    return DB_POOL
 
 
 class ECGInput(BaseModel):
@@ -78,6 +100,16 @@ class PredictionResponse(BaseModel):
     model_version: str
     processing_time_ms: float
 
+@router.get("/predictions/recent")
+async def get_recent_predictions(limit: int = 10):
+    """Get recent predictions from database."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM predictions ORDER BY created_at DESC LIMIT $1",
+            limit
+        )
+        return [dict(row) for row in rows]
 
 @router.post("/predict", response_model=PredictionResponse)
 async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
@@ -97,6 +129,7 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
     Then maps diagnoses to evidence-based clinical actions.
     """
     start_time = time.time()
+    ecg_id = str(uuid.uuid4())  # Generate ID at the start
 
     # Validate signal shape
     signal = np.array(ecg_input.ecg_signal, dtype=np.float32)
@@ -131,12 +164,11 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
             for r in result['recommendations']
         ]
 
-        # Record metrics
+        # Record Prometheus metrics
         for dx in diagnoses:
             PREDICTION_CONFIDENCE.labels(diagnosis=dx.diagnosis).observe(dx.confidence)
 
         for rec in recommendations:
-            # Infer diagnosis from recommendations
             diagnosis = next((d.diagnosis for d in diagnoses), 'UNKNOWN')
             PREDICTIONS_TOTAL.labels(
                 diagnosis=diagnosis,
@@ -152,8 +184,31 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
 
     processing_time = (time.time() - start_time) * 1000
 
+    # Log prediction to PostgreSQL database
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO predictions (
+                    ecg_id, patient_age, patient_sex, model_version,
+                    processing_time_ms, diagnoses, recommendations
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """,
+                uuid.UUID(ecg_id),
+                ecg_input.patient_age,
+                ecg_input.patient_sex,
+                "resnet18-v0.1.0",
+                processing_time,
+                json.dumps([d.dict() for d in diagnoses]),
+                json.dumps([r.dict() for r in recommendations])
+            )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"⚠️  Failed to log prediction to database: {e}")
+
     return PredictionResponse(
-        ecg_id=str(uuid.uuid4()),
+        ecg_id=ecg_id,
         diagnoses=diagnoses,
         recommendations=recommendations,
         model_version="resnet18-v0.1.0",
