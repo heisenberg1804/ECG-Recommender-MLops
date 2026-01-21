@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ecg-api
+  namespace: monitoring
+  labels:
+    app: ecg-api
+    project: ecg-recommender
+spec:
+  selector:
+    matchLabels:
+      app: ecg-api
+      project: ecg-recommender  # Match both labels!
+  namespaceSelector:
+    matchNames:
+    - ecg-dev
+  endpoints:
+  - port: http          # References the port name
+    path: /metrics
+    interval: 15s

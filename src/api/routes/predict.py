@@ -1,16 +1,42 @@
 # ============================================================
-# FILE: src/api/routes/predict.py (UPDATED)
+# FILE: src/api/routes/predict.py (UPDATED WITH METRICS)
 # ============================================================
 import time
 import uuid
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
+from prometheus_client import Counter, Gauge, Histogram
 from pydantic import BaseModel, Field
 
 from src.ml.inference.predictor import get_predictor
 
 router = APIRouter()
+
+# Prometheus metrics
+PREDICTIONS_TOTAL = Counter(
+    'ecg_predictions_total',
+    'Total number of predictions made',
+    ['diagnosis', 'urgency']
+)
+
+PREDICTION_LATENCY = Histogram(
+    'ecg_prediction_latency_seconds',
+    'Time spent processing predictions',
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0]
+)
+
+PREDICTION_CONFIDENCE = Histogram(
+    'ecg_prediction_confidence',
+    'Confidence scores of predictions',
+    ['diagnosis'],
+    buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+)
+
+MODEL_LOADED = Gauge(
+    'ecg_model_loaded',
+    'Whether the model is loaded (1) or not (0)'
+)
 
 
 class ECGInput(BaseModel):
@@ -83,9 +109,11 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
     try:
         # Get predictor (lazy loads model on first call)
         predictor = get_predictor()
+        MODEL_LOADED.set(1)
 
-        # Run inference
-        result = predictor.predict(signal, threshold=0.3, top_k=5)
+        # Run inference (track latency)
+        with PREDICTION_LATENCY.time():
+            result = predictor.predict(signal, threshold=0.3, top_k=5)
 
         # Convert to response format
         diagnoses = [
@@ -103,7 +131,20 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
             for r in result['recommendations']
         ]
 
+        # Record metrics
+        for dx in diagnoses:
+            PREDICTION_CONFIDENCE.labels(diagnosis=dx.diagnosis).observe(dx.confidence)
+
+        for rec in recommendations:
+            # Infer diagnosis from recommendations
+            diagnosis = next((d.diagnosis for d in diagnoses), 'UNKNOWN')
+            PREDICTIONS_TOTAL.labels(
+                diagnosis=diagnosis,
+                urgency=rec.urgency
+            ).inc()
+
     except Exception as e:
+        MODEL_LOADED.set(0)
         raise HTTPException(
             status_code=500,
             detail=f"Prediction failed: {str(e)}"
@@ -125,6 +166,7 @@ async def get_model_info():
     """Get information about the loaded model."""
     try:
         predictor = get_predictor()
+        MODEL_LOADED.set(1)
         return {
             "model_type": "ResNet-18 1D",
             "classes": predictor.superclasses,
@@ -132,6 +174,7 @@ async def get_model_info():
             "model_path": str(predictor.model_path),
         }
     except Exception as e:
+        MODEL_LOADED.set(0)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load model info: {str(e)}"
