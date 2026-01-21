@@ -27,12 +27,13 @@ jobs:
       - name: Install dependencies
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv sync
-      
+          uv sync --all-extras  # Changed from just 'uv sync'
+
       - name: Run linting
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv run ruff check src/
+
       
       - name: Run tests
         run: |
