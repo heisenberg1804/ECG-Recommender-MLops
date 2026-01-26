@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from src.api.routes import health, predict
+from src.api.routes import bias, drift, health, predict
 
 
 @asynccontextmanager
@@ -41,3 +41,5 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(predict.router, tags=["Predictions"])
+app.include_router(drift.router, prefix="/monitoring", tags=["Monitoring"])  # Add this
+app.include_router(bias.router, prefix="/monitoring", tags=["Monitoring"])  # Add this

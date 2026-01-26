@@ -1,0 +1,5 @@
+asyncpg==0.29.0
+evidently==0.4.0
+numpy==1.26.0
+pandas==2.1.0
+scipy==1.11.0

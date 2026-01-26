@@ -66,6 +66,7 @@ class ResNet1D(nn.Module):
         in_channels: int = 12,
         include_patient_context: bool = False,
         patient_context_dim: int = 3,  # age, sex, bmi
+        dropout_rate: float = 0.3,  # Add dropout
     ):
         super().__init__()
         self.include_patient_context = include_patient_context
@@ -87,6 +88,9 @@ class ResNet1D(nn.Module):
 
         # Global pooling
         self.avgpool = nn.AdaptiveAvgPool1d(1)
+
+        # Dropout for regularization
+        self.dropout = nn.Dropout(dropout_rate)
 
         # Classification head
         fc_input_dim = 512
@@ -149,6 +153,9 @@ class ResNet1D(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)  # (batch, 512)
 
+        # Apply dropout
+        x = self.dropout(x)
+
         # Concatenate patient context if provided
         if self.include_patient_context and patient_context is not None:
             x = torch.cat([x, patient_context], dim=1)
@@ -158,21 +165,31 @@ class ResNet1D(nn.Module):
         return x
 
 
-def resnet18_1d(num_classes: int, include_patient_context: bool = False) -> ResNet1D:
+def resnet18_1d(
+    num_classes: int,
+    include_patient_context: bool = False,
+    dropout_rate: float = 0.3,
+) -> ResNet1D:
     """Constructs a ResNet-18 1D model."""
     return ResNet1D(
         layers=[2, 2, 2, 2],
         num_classes=num_classes,
         include_patient_context=include_patient_context,
+        dropout_rate=dropout_rate,
     )
 
 
-def resnet34_1d(num_classes: int, include_patient_context: bool = False) -> ResNet1D:
+def resnet34_1d(
+    num_classes: int,
+    include_patient_context: bool = False,
+    dropout_rate: float = 0.3,
+) -> ResNet1D:
     """Constructs a ResNet-34 1D model."""
     return ResNet1D(
         layers=[3, 4, 6, 3],
         num_classes=num_classes,
         include_patient_context=include_patient_context,
+        dropout_rate=dropout_rate,
     )
 
 

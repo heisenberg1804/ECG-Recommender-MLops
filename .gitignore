@@ -62,3 +62,10 @@ Thumbs.db
 *.log
 logs/mlflow.db
 mlflow.db
+
+#Airflow
+airflow/logs/
+docker/airflow/
+
+#Evidently
+reports/

@@ -154,7 +154,7 @@ def main():
     print("="*80)
 
     # Configuration
-    API_URL = "http://localhost:8001"
+    API_URL = "http://localhost:8000"
     DATA_DIR = PROJECT_ROOT.parent / "data" / "ptb-xl" / "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3"
 
     # Test health check
