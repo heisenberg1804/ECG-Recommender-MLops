@@ -816,7 +816,7 @@ MIT License - See LICENSE file for details
 
 ## 🚀 Quick Demo
 
-Want to see it in action? Here's a 30-second demo:
+Want to see it in action?
 
 ```bash
 # 1. Clone and setup (5 min)
