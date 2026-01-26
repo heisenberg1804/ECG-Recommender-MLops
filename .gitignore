@@ -69,3 +69,6 @@ docker/airflow/
 
 #Evidently
 reports/
+
+#Docker airflow configs:
+docker/docker-compose.airflow.override.yml
