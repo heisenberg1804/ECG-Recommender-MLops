@@ -39,7 +39,7 @@ class BiasAnalyzer:
 
         rows = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 ecg_id,
                 created_at,
                 patient_age,
