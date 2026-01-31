@@ -72,3 +72,7 @@ reports/
 
 #Docker airflow configs:
 docker/docker-compose.airflow.override.yml
+
+#gcloud
+google-cloud-sdk/
+*.tar.gz
