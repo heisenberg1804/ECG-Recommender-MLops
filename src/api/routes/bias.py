@@ -28,7 +28,7 @@ class BiasStatus(BaseModel):
 async def get_bias_status():
     """
     Get current bias monitoring status.
-    
+
     Analyzes last 7 days of predictions for fairness across demographics.
     """
     db_url = f"postgresql://{os.getenv('POSTGRES_USER', 'ecg_user')}:" \

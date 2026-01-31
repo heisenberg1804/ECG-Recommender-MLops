@@ -5,6 +5,7 @@ import json
 import os
 import time
 import uuid
+from typing import Any
 
 import asyncpg
 import numpy as np
@@ -50,7 +51,7 @@ async def get_db_pool():
     global DB_POOL
     if DB_POOL is None:
         DB_POOL = await asyncpg.create_pool(
-            host=os.getenv("POSTGRES_HOST", "localhost"),
+            host=os.getenv("POSTGRES_HOST", "postgres"),
             port=int(os.getenv("POSTGRES_PORT", "5432")),
             user=os.getenv("POSTGRES_USER", "ecg_user"),
             password=os.getenv("POSTGRES_PASSWORD", "ecg_password_dev"),
@@ -73,6 +74,9 @@ class ECGInput(BaseModel):
     patient_age: int | None = Field(None, ge=0, le=120)
     patient_sex: str | None = Field(None, pattern="^(M|F)$")
     sampling_rate: int = Field(default=500, description="Sampling rate in Hz")
+    explain: bool = Field(default=False, description="Generate explanation for prediction")
+    use_llm: bool = Field(default=False,
+                           description="Use medical LLM for clinical explanation (slower)")
 
 
 class ClinicalAction(BaseModel):
@@ -99,17 +103,11 @@ class PredictionResponse(BaseModel):
     recommendations: list[ClinicalAction]
     model_version: str
     processing_time_ms: float
+    explanation: dict[str, Any] | None = Field(
+        None,
+        description="Explanation for the prediction (if explain=True)"
+    )
 
-@router.get("/predictions/recent")
-async def get_recent_predictions(limit: int = 10):
-    """Get recent predictions from database."""
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM predictions ORDER BY created_at DESC LIMIT $1",
-            limit
-        )
-        return [dict(row) for row in rows]
 
 @router.post("/predict", response_model=PredictionResponse)
 async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
@@ -146,7 +144,15 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
 
         # Run inference (track latency)
         with PREDICTION_LATENCY.time():
-            result = predictor.predict(signal, threshold=0.3, top_k=5)
+            result = predictor.predict(
+                signal,
+                threshold=0.3,
+                top_k=5,
+                explain=ecg_input.explain,
+                use_llm=ecg_input.use_llm,
+                patient_age=ecg_input.patient_age,
+                patient_sex=ecg_input.patient_sex,
+            )
 
         # Convert to response format
         diagnoses = [
@@ -213,6 +219,7 @@ async def predict_clinical_actions(ecg_input: ECGInput) -> PredictionResponse:
         recommendations=recommendations,
         model_version="resnet18-v0.1.0",
         processing_time_ms=round(processing_time, 2),
+        explanation=result.get('explanation'),  # Add explanation
     )
 
 

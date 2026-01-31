@@ -159,6 +159,10 @@ class ClinicalActionPredictor:
         signal: np.ndarray,
         threshold: float = 0.5,
         top_k: int = 5,
+        explain: bool = False,
+        use_llm: bool = False,  # Add LLM flag
+        patient_age: int | None = None,  # Add patient context
+        patient_sex: str | None = None,
     ) -> dict[str, Any]:
         """
         Predict clinical actions from ECG signal.
@@ -167,11 +171,13 @@ class ClinicalActionPredictor:
             signal: ECG signal, shape (12, num_samples) or (num_samples, 12)
             threshold: Probability threshold for diagnosis prediction
             top_k: Return top K recommendations
+            explain: If True, generate explanation for top prediction
 
         Returns:
             Dictionary with:
                 - diagnoses: List of predicted diagnoses with probabilities
                 - recommendations: List of recommended clinical actions
+                - explanation: (optional) Explanation for top diagnosis
         """
         # Preprocess
         signal_tensor = self.preprocess_signal(signal).to(self.device)
@@ -232,10 +238,30 @@ class ClinicalActionPredictor:
         # Limit to top_k
         recommendations = recommendations[:top_k]
 
-        return {
+        result = {
             'diagnoses': diagnoses,
             'recommendations': recommendations,
         }
+
+        # Generate explanation if requested
+        if explain and diagnoses:
+            from src.ml.explainability.explainer import explain_top_prediction
+
+            explanation = explain_top_prediction(
+                model=self.model,
+                signal=signal,
+                diagnoses=diagnoses,
+                device=self.device,
+                superclasses=self.superclasses,
+                patient_age=patient_age,
+                patient_sex=patient_sex,
+                recommendations=recommendations,
+                use_llm=use_llm,
+            )
+
+            result['explanation'] = explanation
+
+        return result
 
 
 # Singleton instance (lazy loading)

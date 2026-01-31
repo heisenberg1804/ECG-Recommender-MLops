@@ -138,8 +138,10 @@ class BiasAnalyzer:
                 female_rate = sex_groups.get('F', 0)
 
                 # Demographic parity ratio (should be close to 1.0)
-                parity_ratio = min(male_rate, female_rate) / max(male_rate, female_rate) if max(male_rate, 
-                female_rate) > 0 else 1.0
+                if max(male_rate, female_rate) > 0:
+                    parity_ratio = min(male_rate, female_rate) / max(male_rate, female_rate)
+                else:
+                    parity_ratio = 1.0
 
                 results['sex_parity'] = {
                     'male_urgent_rate': float(male_rate),
