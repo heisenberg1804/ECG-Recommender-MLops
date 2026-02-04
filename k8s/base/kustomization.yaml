@@ -6,9 +6,10 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
-  - servicemonitor.yaml
+  # - servicemonitor.yaml
   - postgres.yaml  # Add this
   - mlflow.yaml
+  - serviceaccount.yaml 
 
 namespace: ecg-dev
 

@@ -76,3 +76,6 @@ docker/docker-compose.airflow.override.yml
 #gcloud
 google-cloud-sdk/
 *.tar.gz
+
+#k8s kustomization
+k8s/overlays/*/kustomization.yaml

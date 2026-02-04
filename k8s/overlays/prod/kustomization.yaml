@@ -6,5 +6,71 @@ namespace: ecg-prod
 resources:
   - ../../base
 
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: ecg-api
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+    - op: replace
+      path: /spec/template/spec/serviceAccountName
+      value: ecg-sql-proxy
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: us-central1-docker.pkg.dev/ecg-mlops-project/ecg-repo/ecg-api:v0.2.1
+    - op: replace
+      path: /spec/template/spec/containers/0/imagePullPolicy
+      value: Always
+    - op: replace
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: POSTGRES_HOST
+          value: "127.0.0.1"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_DB
+          value: "ecg_predictions"
+        - name: DISABLE_LLM_EXPLANATIONS
+          value: "true"
+    - op: add
+      path: /spec/template/spec/containers/-
+      value:
+        name: cloudsql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+        args:
+          - "--structured-logs"
+          - "--port=5432"
+          - "ecg-mlops-project:us-central1:ecg-postgres"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+
 patches:
-  - path: deployment-patch.yaml
+  - path: service-patch.yaml
+
+secretGenerator:
+- name: postgres-credentials
+  literals:
+  - username=ecg_user
+  - password=ecgUser@123

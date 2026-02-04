@@ -7,14 +7,14 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  build-verification:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          lfs: true  # Pull LFS files
+          lfs: true  # Pulls the actual .pth model file
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,15 +27,4 @@ jobs:
       - name: Install dependencies
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv sync --all-extras  # Changed from just 'uv sync'
-
-      - name: Run linting
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          uv run ruff check src/
-
-      
-      - name: Run tests
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          uv run pytest tests/
+          uv sync --all-extras

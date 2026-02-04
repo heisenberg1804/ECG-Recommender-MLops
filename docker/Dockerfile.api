@@ -1,39 +1,52 @@
-FROM python:3.11-slim
+# ==========================================
+# Stage 1: The Builder (Heavy Lifting)
+# ==========================================
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
-
-# Install system dependencies
+# Install build tools needed for compiling libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Add uv to PATH
-ENV PATH="/root/.local/bin:$PATH"
+WORKDIR /app
 
-# Copy dependency files
+# Copy dependency definitions
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies
-RUN uv sync --frozen --no-dev
+# Install dependencies into a virtual environment
+# --compile-bytecode speeds up startup time
+RUN uv sync --frozen --no-dev --compile-bytecode
 
-# Copy application code
+# ==========================================
+# Stage 2: The Runtime (Slim & Fast)
+# ==========================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy the virtual environment from the builder stage
+# This is the MAGIC step that discards all build tools
+COPY --from=builder /app/.venv /app/.venv
+
+# Add the venv to the PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Copy ONLY necessary app code
 COPY src/ ./src/
 COPY conftest.py ./
-
-# Copy model and action mapping
 COPY models/best_model.pth ./models/best_model.pth
 COPY src/ml/inference/action_mapping.json ./src/ml/inference/action_mapping.json
 
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check (Using python instead of installing curl to save space)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').getcode() == 200" || exit 1
 
-# Run the application
-CMD ["uv", "run", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run directly (no need for 'uv run' overhead)
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -27,6 +27,9 @@ Given a 12-lead ECG signal and patient context (age, sex), the system:
 
 ---
 
+## 🚀 Live Demo
+**Try the API here:** [http://35.224.1.181/docs](http://35.224.1.181/docs)
+
 ## 🏗️ Architecture
 
 ### High-Level System Design

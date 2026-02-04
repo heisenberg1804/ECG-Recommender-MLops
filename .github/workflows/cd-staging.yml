@@ -4,45 +4,60 @@ on:
   push:
     branches: [ main ]
 
-permissions:
-  contents: read
-  packages: write  # Add this - allows pushing to GHCR
-
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Required for Google Auth
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      # --- Google Cloud Authentication ---
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Configure Docker for Artifact Registry'
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      # --- Docker Build Setup ---
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha
-            type=raw,value=latest
-      
+
+      # --- Build & Push (Optimized) ---
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.api
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64  # Strict AMD64 build for GKE
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            us-central1-docker.pkg.dev/ecg-mlops-project/ecg-repo/ecg-api:latest
+            us-central1-docker.pkg.dev/ecg-mlops-project/ecg-repo/ecg-api:${{ github.sha }}
+
+      # --- Sync GKE with New Image ---
+      - name: Deploy to GKE
+        if: success()
+        run: |
+          # 1. Connect to Cluster
+          gcloud container clusters get-credentials ecg-cluster --region us-central1 --project ecg-mlops-project
+          
+          # 2. Update the Deployment to use the new SHA tag
+          kubectl set image deployment/ecg-api api=us-central1-docker.pkg.dev/ecg-mlops-project/ecg-repo/ecg-api:${{ github.sha }} -n ecg-prod
+          
+          # 3. Verify Rollout Success
+          kubectl rollout status deployment/ecg-api -n ecg-prod
