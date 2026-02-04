@@ -35,7 +35,7 @@ htmlcov/
 *.env
 
 # Data (large files)
-data/
+# data/
 *.h5
 *.hdf5
 *.npy
@@ -79,3 +79,4 @@ google-cloud-sdk/
 
 #k8s kustomization
 k8s/overlays/*/kustomization.yaml
+gcp-key.json
