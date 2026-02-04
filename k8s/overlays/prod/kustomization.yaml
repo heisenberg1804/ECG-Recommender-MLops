@@ -25,6 +25,13 @@ patchesJson6902:
     - op: replace
       path: /spec/template/spec/containers/0/imagePullPolicy
       value: Always
+    # ✅ TIMEOUTS: Adjusted to safe values for smaller image
+    - op: replace
+      path: /spec/template/spec/containers/0/livenessProbe/initialDelaySeconds
+      value: 60
+    - op: replace
+      path: /spec/template/spec/containers/0/readinessProbe/initialDelaySeconds
+      value: 60
     - op: replace
       path: /spec/template/spec/containers/0/env
       value:
@@ -65,6 +72,15 @@ patchesJson6902:
           requests:
             memory: "256Mi"
             cpu: "100m"
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: postgres
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 0
 
 patches:
   - path: service-patch.yaml

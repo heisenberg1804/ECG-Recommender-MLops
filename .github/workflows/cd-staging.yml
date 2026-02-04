@@ -23,8 +23,11 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
+      # --- [FIXED] Install GKE Auth Plugin ---
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
 
       - name: 'Configure Docker for Artifact Registry'
         run: |
@@ -53,7 +56,7 @@ jobs:
       - name: Deploy to GKE
         if: success()
         run: |
-          # 1. Connect to Cluster
+          # 1. Connect to Cluster (Now works because plugin is installed)
           gcloud container clusters get-credentials ecg-cluster --region us-central1 --project ecg-mlops-project
           
           # 2. Update the Deployment to use the new SHA tag
