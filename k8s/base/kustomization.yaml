@@ -13,6 +13,6 @@ resources:
 
 namespace: ecg-dev
 
-commonLabels:
-  app: ecg-api
-  project: ecg-recommender
+# commonLabels:
+#   app: ecg-api
+#   project: ecg-recommender

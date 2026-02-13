@@ -8,9 +8,9 @@ metadata:
 spec:
   selector:
     app: ecg-api
-    project: ecg-recommender
+    # Remove project selector - pods don't have it
   ports:
-  - name: http          # Add this line!
+  - name: http
     port: 80
     targetPort: 8000
   type: ClusterIP
