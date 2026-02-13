@@ -155,7 +155,7 @@ def main():
 
     # Configuration
     API_URL = "http://localhost:8000"
-    DATA_DIR = PROJECT_ROOT.parent / "data" / "ptb-xl" / "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3"
+    DATA_DIR = PROJECT_ROOT.parent / "ecg-recommender" / "data" / "ptb-xl" / "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3"
 
     # Test health check
     print("\n🔍 Checking if API is running...")

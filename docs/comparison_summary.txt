@@ -1,0 +1,18 @@
+======================================================================
+MODEL COMPARISON SUMMARY
+======================================================================
+
+🏆 Best Overall Model: ensemble_best_model_best_model_v2
+   Test AUC: 0.9443
+
+💊 Best for HYP (Hypertrophy): resnet18-baseline
+   HYP AUC: 0.9123
+
+======================================================================
+PRODUCTION RECOMMENDATION
+======================================================================
+
+Consider trade-offs:
+• Highest accuracy → Best overall AUC
+• Clinical equity → Best fairness metrics
+• Balanced approach → Ensemble model

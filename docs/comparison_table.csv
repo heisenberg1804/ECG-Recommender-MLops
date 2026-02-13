@@ -1,0 +1,5 @@
+runName,experiment,test_auc,test_auc_HYP,loss_function,focal_alpha
+ensemble_best_model_best_model_v2,ensemble-models,0.944277194980792,0.8941572055218683,,
+resnet18-baseline,ecg-baseline,0.9317673223827911,0.9123371177912527,,
+resnet18-focal-loss,focal-loss-hyp-improvement,0.9305792483106543,0.8703500623575453,focal_loss,0.25
+resnet18-v2-improved,ecg-v2,0.9277320643867689,0.8652405066012988,,
